@@ -110,11 +110,11 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('========================================');
       console.log(`✅ 服务器启动成功！`);
-      console.log(`📡 服务地址: http://localhost:${PORT}`);
-      console.log(`📚 API 文档: http://localhost:${PORT}/api-docs`);
+      console.log(`📡 服务地址: http://0.0.0.0:${PORT}`);
+      console.log(`📚 API 文档: http://0.0.0.0:${PORT}/api-docs`);
       console.log('========================================');
     });
   } catch (error) {
