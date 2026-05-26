@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
@@ -22,7 +21,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 中间件
-app.use(cors());
+const corsMiddleware = require('./config/cors');
+app.use(corsMiddleware);
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -43,7 +43,7 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: `http://localhost:${PORT}`,
+        url: `http://0.0.0.0:${PORT}`,
         description: '开发服务器'
       }
     ],
@@ -55,12 +55,9 @@ const swaggerOptions = {
           bearerFormat: 'JWT'
         }
       }
-    },
-    security: [{
-      bearerAuth: []
-    }]
+    }
   },
-  apis: ['./src/routes/*.js']
+  apis: ['./routes/*.js']
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -81,48 +78,26 @@ app.use('/api/abnormal-tasks', abnormalTaskRoutes);
 app.use('/api/ledger', ledgerRoutes);
 app.use('/api/dingtalk', dingtalkRoutes);
 
-// 错误处理中间件
+// 错误处理
 app.use((err, req, res, next) => {
   console.error('错误:', err);
-  res.status(err.status || 500).json({
-    code: err.status || 500,
-    message: err.message || '服务器内部错误',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+  res.status(500).json({ code: 500, message: '服务器错误' });
 });
 
-// 404 处理
-app.use((req, res) => {
-  res.status(404).json({
-    code: 404,
-    message: '请求的资源不存在'
-  });
-});
-
-// 启动服务器
-const startServer = async () => {
-  try {
-    // 测试数据库连接
-    const dbConnected = await testConnection();
-    
-    if (!dbConnected) {
-      console.error('无法连接到数据库，服务启动失败');
-      process.exit(1);
-    }
-
+// 测试数据库连接并启动服务器
+testConnection()
+  .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log('========================================');
-      console.log(`✅ 服务器启动成功！`);
+      console.log('✅ 服务器启动成功！');
       console.log(`📡 服务地址: http://0.0.0.0:${PORT}`);
       console.log(`📚 API 文档: http://0.0.0.0:${PORT}/api-docs`);
       console.log('========================================');
     });
-  } catch (error) {
-    console.error('服务器启动失败:', error);
+  })
+  .catch((err) => {
+    console.error('数据库连接失败:', err);
     process.exit(1);
-  }
-};
-
-startServer();
+  });
 
 module.exports = app;
