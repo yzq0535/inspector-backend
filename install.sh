@@ -5,8 +5,6 @@
 # 适用于 Ubuntu 22.04
 # ===========================================
 
-set -e  # 遇到错误立即退出
-
 echo "========================================"
 echo "开始安装环境..."
 echo "========================================"
@@ -24,19 +22,21 @@ echo "[3/7] 配置 MySQL..."
 systemctl start mysql
 systemctl enable mysql
 
-# 设置 MySQL root 密码
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'Inspector2025!';"
-mysql -e "FLUSH PRIVILEGES;"
-
-# 创建数据库和用户
-mysql -u root -p'Inspector2025!' <<EOF
+# 使用 sudo mysql 设置 root 密码并创建数据库
+sudo mysql <<EOF
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'Inspector2025!';
+FLUSH PRIVILEGES;
 CREATE DATABASE IF NOT EXISTS inspector_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'inspector'@'localhost' IDENTIFIED BY 'Inspector2025!';
 GRANT ALL PRIVILEGES ON inspector_db.* TO 'inspector'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 
-echo "MySQL 数据库已创建完成！"
+if [ $? -eq 0 ]; then
+    echo "✅ MySQL 数据库已创建完成！"
+else
+    echo "⚠️  MySQL 自动配置失败，请参考 MANUAL_INSTALL.md 手动配置"
+fi
 
 # 安装 Node.js 18.x
 echo "[4/7] 安装 Node.js..."
@@ -57,9 +57,16 @@ echo "[6/7] 安装项目依赖..."
 cd /opt/inspector-backend
 npm install
 
-# 初始化数据库
+# 初始化数据库（尝试执行）
 echo "[7/7] 初始化数据库..."
-npm run init-db
+if npm run init-db; then
+    npm run seed
+else
+    echo "⚠️  数据库初始化失败，请手动执行："
+    echo "  cd /opt/inspector-backend"
+    echo "  npm run init-db"
+    echo "  npm run seed"
+fi
 
 # 创建 systemd 服务文件
 echo "[完成] 创建 systemd 服务..."
@@ -88,6 +95,8 @@ systemctl daemon-reload
 echo "========================================"
 echo "安装完成！"
 echo "========================================"
+echo ""
+echo "📋 如果遇到问题，请参考 MANUAL_INSTALL.md"
 echo ""
 echo "服务管理命令："
 echo "  启动服务: systemctl start inspector"
